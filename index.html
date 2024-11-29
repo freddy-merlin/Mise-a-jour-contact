@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mise à jour Contacts</title>
+  <!-- <link rel="stylesheet" href="styles.css"> -->
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #ebee56;
+      color: #333;
+    }
+    
+    .container {
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    button, input[type="file"], a {
+      margin: 10px 0;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    
+    </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Mise à jour de vos contacts</h1>
+    <p>Automatisez la mise à jour de vos numéros de téléphone !</p>
+    <input type="file" id="upload" accept=".vcf">
+    <button id="process">Mettre à jour les numéros</button>
+    <a id="download" style="display:none;">Télécharger le fichier modifié</a>
+    <div id="guide">
+      <h2>Synchronisation avec WhatsApp</h2>
+      <p>L'ancien format de vos contacts est conservé ...</p>
+    </div>
+  </div>
+  <script >
+    
+    document.getElementById('process').addEventListener('click', () => {
+  const fileInput = document.getElementById('upload');
+  if (!fileInput.files.length) {
+    alert('Veuillez importer un fichier .vcf');
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+
+  reader.onload = function (e) {
+    const vcfContent = e.target.result;
+
+    const lines = vcfContent.split('\n');
+    const updatedLines = [];
+    let currentName = ''; // Stocke le nom du contact en cours
+
+    lines.forEach((line) => {
+      if (line.startsWith('FN:')) {
+        currentName = line.replace('FN:', '').trim(); // Récupère le nom
+        updatedLines.push(line); // Conserve la ligne originale
+      } else if (line.startsWith('TEL')) {
+        const rawNumberMatch = line.match(/TEL.*:(.+)/); // Extraire le numéro brut
+        if (rawNumberMatch) {
+          const rawNumber = rawNumberMatch[1]; // Exemple : "976-338-69"
+
+          // Vérification si c'est un numéro béninois (8 chiffres après nettoyage ou +229 suivi de 8 chiffres)
+          const cleanNumber = rawNumber.replace(/[-\s]/g, ''); // Supprime les séparateurs pour la vérification
+          const beninNumberRegex = /^(\+229\d{8}|\d{8})$/;
+
+          if (beninNumberRegex.test(cleanNumber)) {
+            let newNumber;
+
+            if (cleanNumber.startsWith('+229')) {
+              // Ajoute "01" après +229
+              newNumber = '+22901' + cleanNumber.slice(4);
+            } else if (/^\d{8}$/.test(cleanNumber)) {
+              // Ajoute "01" au début d'un numéro local
+              newNumber = '01' + rawNumber; // Conserve les séparateurs
+            } else {
+              newNumber = rawNumber; // Si aucune condition ne s'applique
+            }
+
+            // Conserver l'ancien numéro et ajouter le nouveau
+            updatedLines.push(line); // Conserve l'ancien numéro
+            updatedLines.push(line.replace(rawNumber, newNumber)); // Ajoute le nouveau numéro
+
+            // Ajouter "01" au nom du contact
+            if (currentName) {
+              updatedLines.push(`FN:${currentName} 01`);
+              currentName = ''; // Réinitialiser après modification
+            }
+          } else {
+            // Si ce n'est pas un numéro béninois, conserver la ligne telle quelle
+            updatedLines.push(line);
+          }
+        } else {
+          updatedLines.push(line); // Ligne sans numéro valide
+        }
+      } else {
+        updatedLines.push(line); // Conserver les autres lignes
+      }
+    });
+
+    // Fusionner les lignes mises à jour
+    const updatedContent = updatedLines.join('\n');
+
+    // Télécharger le fichier modifié
+    const blob = new Blob([updatedContent], { type: 'text/vcard' });
+    const link = document.getElementById('download');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'contacts_modifies_format.vcf';
+    link.style.display = 'inline';
+    link.textContent = 'Télécharger le fichier modifié';
+  };
+
+  reader.readAsText(file);
+});
+
+
+
+document.addEventListener('contextmenu', function (e) {
+  e.preventDefault(); // Empêche le menu contextuel
+  // alert("Le clic droit est désactivé sur cette page.");
+});
+
+document.addEventListener('keydown', function (e) {
+  // Empêche F12
+  if (e.key === 'F12') {
+    e.preventDefault();
+    // alert("L'accès aux outils de développement est désactivé.");
+  }
+
+  // Empêche Ctrl+Shift+I
+  if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+    e.preventDefault();
+    // alert("L'accès aux outils de développement est désactivé.");
+  }
+
+  // Empêche Ctrl+U (Afficher le code source)
+  if (e.ctrlKey && e.key === 'u') {
+    e.preventDefault();
+    // alert("Le code source est protégé.");
+  }
+});
+
+
+
+
+  </script>
+</body>
+</html>
+
+
+
+
